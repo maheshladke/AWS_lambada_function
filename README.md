@@ -1,25 +1,32 @@
-import boto3
+This script:
+- Lists all snapshots owned by your AWS account.
+- Checks if each snapshot has an associated volume.
+- Deletes the snapshot if no volume is found.
 
-def lambda_handler(event, context):
-    ec2 = boto3.client('ec2')
-
-    # Get all snapshots owned by your account
-    snapshots = ec2.describe_snapshots(OwnerIds=['self'])['Snapshots']
-
-    # Get all existing volumes
-    volumes = ec2.describe_volumes()['Volumes']
-    existing_volume_ids = {v['VolumeId'] for v in volumes}
-
-    for snapshot in snapshots:
-        snapshot_id = snapshot['SnapshotId']
-        volume_id = snapshot.get('VolumeId')
-
-        # If snapshot's volume does not exist anymore, delete it
-        if volume_id not in existing_volume_ids:
-            try:
-                ec2.delete_snapshot(SnapshotId=snapshot_id)
-                print(f"Deleted snapshot {snapshot_id} (volume {volume_id} not found).")
-            except Exception as e:
-                print(f"Error deleting snapshot {snapshot_id}: {str(e)}")
-        else:
-            print(f"Snapshot {snapshot_id} is linked to active volume {volume_id}, skipping.")
+Step-by-Step Procedure to Configure AWS Lambda
+- Create IAM Role
+- Go to IAM → Roles → Create Role.
+- Choose Lambda as the trusted entity.
+- Attach policies:
+- AmazonEC2FullAccess (or a custom policy with DescribeSnapshots and DeleteSnapshot).
+- Save the role.
+- Create Lambda Function
+- Go to AWS Lambda → Create Function.
+- Choose Author from scratch.
+- Runtime: Python 3.x.
+- Assign the IAM role you created.
+- Add Python Code
+- In the Lambda console, paste the script above into the code editor.
+- Click Deploy.
+- Test the Function
+- Create a test event (dummy JSON).
+- Run the function.
+- Check CloudWatch logs to confirm snapshots are deleted.
+- Automate with CloudWatch Events (EventBridge)
+- Go to EventBridge → Create Rule.
+- Schedule expression (e.g., rate(1 day) to run daily).
+- Target: your Lambda function.
+- This ensures stale snapshots are cleaned up automatically.
+- Monitor & Audit
+- Use CloudWatch Logs to track deletions.
+- Optionally, add SNS notifications for snapshot deletions
